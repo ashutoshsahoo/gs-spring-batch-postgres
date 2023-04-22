@@ -36,20 +36,20 @@ public class BatchConfiguration {
     }
 
     @Bean
-    public FlatFileItemReader reader() {
-        return new FlatFileItemReaderBuilder().name("coffeeItemReader")
+    public FlatFileItemReader<Coffee> reader() {
+        BeanWrapperFieldSetMapper<Coffee> beanWrapperFieldSetMapper = new BeanWrapperFieldSetMapper<>();
+        beanWrapperFieldSetMapper.setTargetType(Coffee.class);
+        return new FlatFileItemReaderBuilder<Coffee>().name("coffeeItemReader")
                 .resource(new ClassPathResource(fileInput))
                 .delimited()
-                .names(new String[]{"brand", "origin", "characteristics"})
-                .fieldSetMapper(new BeanWrapperFieldSetMapper() {{
-                    setTargetType(Coffee.class);
-                }})
+                .names("brand", "origin", "characteristics")
+                .fieldSetMapper(beanWrapperFieldSetMapper)
                 .build();
     }
 
     @Bean
-    public JdbcBatchItemWriter writer(DataSource dataSource) {
-        return new JdbcBatchItemWriterBuilder()
+    public JdbcBatchItemWriter<Coffee> writer(DataSource dataSource) {
+        return new JdbcBatchItemWriterBuilder<Coffee>()
                 .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
                 .sql("INSERT INTO coffee (brand, origin, characteristics) VALUES (:brand, :origin, :characteristics)")
                 .dataSource(dataSource)
