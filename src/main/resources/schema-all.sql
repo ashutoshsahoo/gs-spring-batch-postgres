@@ -1,7 +1,6 @@
-SET MODE PostgreSQL;
-DROP TABLE coffee IF EXISTS;
+DROP TABLE IF EXISTS coffee;
 
-CREATE TABLE coffee  (
+CREATE TABLE coffee (
     coffee_id SERIAL PRIMARY KEY,
     brand VARCHAR(20),
     origin VARCHAR(20),

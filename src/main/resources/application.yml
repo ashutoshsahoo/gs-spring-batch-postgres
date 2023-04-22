@@ -1,2 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/test
+    username: postgres
+    password: changeme
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:/schema-all.sql
+  batch:
+    jdbc:
+      initialize-schema: always
+
+
+
 file:
   input: coffee-list.csv
