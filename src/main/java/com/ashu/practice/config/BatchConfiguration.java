@@ -1,8 +1,8 @@
 package com.ashu.practice.config;
 
-import com.ashu.practice.domain.Coffee;
+import com.ashu.practice.domain.City;
 import com.ashu.practice.listener.JobCompletionNotificationListener;
-import com.ashu.practice.processor.CoffeeItemProcessor;
+import com.ashu.practice.mapper.CityRowMapper;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -11,14 +11,12 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.batch.item.file.FlatFileItemReader;
-import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
-import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
@@ -26,32 +24,27 @@ import javax.sql.DataSource;
 @Configuration
 public class BatchConfiguration {
 
-    @Value("${file.input}")
-    private String fileInput;
+    @Autowired
+    private DataSource dataSource;
 
 
     @Bean
-    public CoffeeItemProcessor processor() {
-        return new CoffeeItemProcessor();
-    }
-
-    @Bean
-    public FlatFileItemReader<Coffee> reader() {
-        BeanWrapperFieldSetMapper<Coffee> beanWrapperFieldSetMapper = new BeanWrapperFieldSetMapper<>();
-        beanWrapperFieldSetMapper.setTargetType(Coffee.class);
-        return new FlatFileItemReaderBuilder<Coffee>().name("coffeeItemReader")
-                .resource(new ClassPathResource(fileInput))
-                .delimited()
-                .names("brand", "origin", "characteristics")
-                .fieldSetMapper(beanWrapperFieldSetMapper)
+    public JdbcCursorItemReader<City> reader() {
+        return new JdbcCursorItemReaderBuilder<City>()
+                .dataSource(dataSource)
+                .name("cityReader")
+                .sql("select * from city")
+                .rowMapper(new CityRowMapper())
                 .build();
     }
 
+
     @Bean
-    public JdbcBatchItemWriter<Coffee> writer(DataSource dataSource) {
-        return new JdbcBatchItemWriterBuilder<Coffee>()
+    public JdbcBatchItemWriter<City> writer() {
+        return new JdbcBatchItemWriterBuilder<City>()
                 .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-                .sql("INSERT INTO coffee (brand, origin, characteristics) VALUES (:brand, :origin, :characteristics)")
+                .sql("INSERT INTO city_history (id, name, countrycode, district,population) " +
+                        "VALUES (:id, :name, :countrycode, :district, :population)")
                 .dataSource(dataSource)
                 .build();
     }
@@ -59,7 +52,7 @@ public class BatchConfiguration {
 
     @Bean
     public Job importUserJob(JobRepository jobRepository, JobCompletionNotificationListener listener, Step step1) {
-        return new JobBuilder("importUserJob", jobRepository)
+        return new JobBuilder("importCityJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
                 .listener(listener)
                 .flow(step1)
@@ -68,11 +61,10 @@ public class BatchConfiguration {
     }
 
     @Bean
-    public Step step1(JobRepository jobRepository, PlatformTransactionManager transactionManager, JdbcBatchItemWriter<Coffee> writer) {
+    public Step step1(JobRepository jobRepository, PlatformTransactionManager transactionManager, JdbcBatchItemWriter<City> writer) {
         return new StepBuilder("step1", jobRepository)
-                .<Coffee, Coffee>chunk(10, transactionManager)
+                .<City, City>chunk(10, transactionManager)
                 .reader(reader())
-                .processor(processor())
                 .writer(writer)
                 .build();
     }

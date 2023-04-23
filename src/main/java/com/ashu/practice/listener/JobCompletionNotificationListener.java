@@ -1,6 +1,5 @@
 package com.ashu.practice.listener;
 
-import com.ashu.practice.domain.Coffee;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
@@ -17,13 +16,23 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
     private final JdbcTemplate jdbcTemplate;
 
     @Override
+    public void beforeJob(JobExecution jobExecution) {
+        log.info("JOB NOT STARTED! Cleanup history table");
+
+        String query = "truncate table city_history;";
+        jdbcTemplate.execute(query);
+        log.info("Successfully truncated city history table.");
+
+    }
+
+    @Override
     public void afterJob(JobExecution jobExecution) {
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
             log.info("JOB FINISHED! Time to verify the results");
 
-            String query = "SELECT brand, origin, characteristics FROM coffee";
-            jdbcTemplate.query(query, (rs, row) -> new Coffee(rs.getString(1), rs.getString(2), rs.getString(3)))
-                    .forEach(coffee -> log.info("Found {} in the database.", coffee));
+            String query = "SELECT count(id) FROM city_history";
+            Long rowCount = jdbcTemplate.queryForObject(query, Long.class);
+            log.info("Found {} records in city history table.", rowCount);
         }
     }
 }
